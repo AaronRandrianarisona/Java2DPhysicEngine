@@ -46,4 +46,38 @@ class WorldTest {
 
         assertNotEquals(Material.FIRE, world.getCell(2, 2).getMaterial());
     }
+
+    @Test
+    void worldRejectsNonPositiveDimensions() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+            () -> new World(0, 5));
+
+        assertEquals("World dimensions must be positive.", exception.getMessage());
+    }
+
+    @Test
+    void outOfBoundsReadsAndWritesAreIgnored() {
+        World world = new World(2, 2);
+
+        world.setCell(-1, 0, Material.SAND);
+        world.setCell(0, -1, Material.WATER);
+        world.setCell(2, 0, Material.STONE);
+
+        assertEquals(Material.EMPTY, world.getCell(-1, 0).getMaterial());
+        assertEquals(Material.EMPTY, world.getCell(0, -1).getMaterial());
+        assertEquals(Material.EMPTY, world.getCell(2, 0).getMaterial());
+    }
+
+    @Test
+    void renderAsciiShowsSymbolsForConfiguredCells() {
+        World world = new World(2, 2);
+        world.setCell(0, 0, Material.SAND);
+        world.setCell(1, 1, Material.WATER);
+
+        String rendered = world.renderAscii();
+
+        assertTrue(rendered.contains("S"));
+        assertTrue(rendered.contains("W"));
+        assertTrue(rendered.contains("."));
+    }
 }
