@@ -38,13 +38,42 @@ class WorldTest {
     }
 
     @Test
-    void fireBurnsOutOverTime() {
-        World world = new World(5, 5);
+    void fireSpreadsProgressivelyAndConsumesFuel() {
+        World world = new World(6, 6);
         world.setCell(2, 2, Material.FIRE);
+        world.setCell(2, 3, Material.WOOD);
 
         world.tick();
 
+        assertEquals(Material.FIRE, world.getCell(2, 3).getMaterial());
+        assertEquals(Material.FIRE, world.getCell(2, 2).getMaterial());
+
+        for (int i = 0; i < 8; i++) {
+            world.tick();
+        }
+
         assertNotEquals(Material.FIRE, world.getCell(2, 2).getMaterial());
+    }
+
+    @Test
+    void lavaAndWaterReactVerticallyAndDiagonally() {
+        World verticalWorld = new World(6, 6);
+        verticalWorld.setCell(2, 1, Material.LAVA);
+        verticalWorld.setCell(2, 0, Material.WATER);
+
+        verticalWorld.tick();
+
+        assertTrue(verticalWorld.getCell(2, 0).getMaterial() == Material.STEAM || verticalWorld.getCell(2, 0).getMaterial() == Material.EMPTY);
+        assertTrue(verticalWorld.getCell(2, 1).getMaterial() == Material.STONE || verticalWorld.getCell(2, 1).getMaterial() == Material.EMPTY);
+
+        World diagonalWorld = new World(6, 6);
+        diagonalWorld.setCell(1, 1, Material.LAVA);
+        diagonalWorld.setCell(2, 0, Material.WATER);
+
+        diagonalWorld.tick();
+
+        assertTrue(diagonalWorld.getCell(2, 0).getMaterial() == Material.STEAM || diagonalWorld.getCell(2, 0).getMaterial() == Material.EMPTY);
+        assertTrue(diagonalWorld.getCell(1, 1).getMaterial() == Material.STONE || diagonalWorld.getCell(1, 1).getMaterial() == Material.EMPTY);
     }
 
     @Test
