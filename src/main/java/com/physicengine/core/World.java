@@ -1,5 +1,7 @@
 package com.physicengine.core;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Random;
 
 public class World {
@@ -7,6 +9,7 @@ public class World {
     private final int height;
     private final Cell[][] grid;
     private final Random random = new Random();
+    private final Map<String, Integer> fireTimers = new HashMap<>();
 
     public World(int width, int height) {
         if (width <= 0 || height <= 0) {
@@ -110,47 +113,74 @@ public class World {
                 Material material = grid[y][x].getMaterial();
 
                 if (material == Material.FIRE) {
-                    if (random.nextInt(100) < 25) {
-                        grid[y][x] = Cell.EMPTY;
+                    int life = fireTimers.getOrDefault(key(x, y), 7);
+                    if (random.nextInt(100) < 22) {
+                        life--;
+                    }
+
+                    if (life <= 0) {
+                        grid[y][x] = random.nextInt(100) < 80 ? new Cell(Material.SMOKE) : Cell.EMPTY;
+                        fireTimers.remove(key(x, y));
+                        continue;
+                    }
+
+                    fireTimers.put(key(x, y), life);
+                }
+
+                if (material == Material.LAVA) {
+                    for (int[] offset : neighborOffsets()) {
+                        int nx = x + offset[0];
+                        int ny = y + offset[1];
+                        if (inBounds(nx, ny) && grid[ny][nx].getMaterial() == Material.WATER) {
+                            grid[ny][nx] = new Cell(Material.STEAM);
+                            grid[y][x] = new Cell(Material.STONE);
+                            fireTimers.remove(key(x, y));
+                            break;
+                        }
                     }
                 }
 
-                if (material == Material.LAVA && x > 0 && grid[y][x - 1].getMaterial() == Material.WATER) {
-                    grid[y][x - 1] = new Cell(Material.STEAM);
-                    grid[y][x] = new Cell(Material.STONE);
+                if (material == Material.ACID) {
+                    for (int[] offset : neighborOffsets()) {
+                        int nx = x + offset[0];
+                        int ny = y + offset[1];
+                        if (inBounds(nx, ny) && grid[ny][nx].getMaterial() == Material.WOOD) {
+                            grid[ny][nx] = Cell.EMPTY;
+                        }
+                    }
                 }
 
-                if (material == Material.ACID && x > 0 && grid[y][x - 1].getMaterial() == Material.WOOD) {
-                    grid[y][x - 1] = Cell.EMPTY;
-                }
-
-                if (material == Material.POWDER && x > 0 && grid[y][x - 1].getMaterial() == Material.FIRE) {
-                    grid[y][x] = new Cell(Material.FIRE);
+                if (material == Material.POWDER) {
+                    for (int[] offset : neighborOffsets()) {
+                        int nx = x + offset[0];
+                        int ny = y + offset[1];
+                        if (inBounds(nx, ny) && grid[ny][nx].getMaterial() == Material.FIRE) {
+                            grid[y][x] = new Cell(Material.FIRE);
+                            fireTimers.put(key(x, y), 7);
+                            break;
+                        }
+                    }
                 }
             }
         }
     }
 
     private void burnOrSpreadFire(int x, int y) {
-        // Slowly spread fire with low probability, generate smoke
-        int[][] neighbors = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+        int[][] neighbors = neighborOffsets();
         for (int[] n : neighbors) {
             int nx = x + n[0];
             int ny = y + n[1];
             if (inBounds(nx, ny)) {
                 Material neighbor = grid[ny][nx].getMaterial();
-                // Only spread if random check passes (reduced probability)
-                if ((neighbor == Material.WOOD || neighbor == Material.PLANT || neighbor == Material.POWDER)
-                    && random.nextInt(100) < 25) {
+                if ((neighbor == Material.WOOD || neighbor == Material.PLANT || neighbor == Material.POWDER) && random.nextInt(100) < 30) {
                     grid[ny][nx] = new Cell(Material.FIRE);
-                    // Create smoke above the fire
+                    fireTimers.put(key(nx, ny), 7 + random.nextInt(4));
                     if (ny > 0 && grid[ny - 1][nx].isEmpty()) {
                         grid[ny - 1][nx] = new Cell(Material.SMOKE);
                     }
                 }
             }
         }
-        grid[y][x] = Cell.EMPTY;
     }
 
     private void moveSand(int x, int y) {
@@ -182,18 +212,13 @@ public class World {
             return;
         }
 
-        int[] directions = {-1, 1};
-        shuffle(directions);
-        for (int offset : directions) {
-            if (canMove(x + offset, y + 1)) {
-                swapCells(x, y, x + offset, y + 1);
-                return;
-            }
-        }
-
-        for (int offset : directions) {
-            if (canMove(x + offset, y)) {
-                swapCells(x, y, x + offset, y);
+        int[][] diagonalMoves = {{-1, 1}, {1, 1}, {-1, 0}, {1, 0}};
+        shuffleDiagonalMoves(diagonalMoves);
+        for (int[] move : diagonalMoves) {
+            int nx = x + move[0];
+            int ny = y + move[1];
+            if (canMove(nx, ny)) {
+                swapCells(x, y, nx, ny);
                 return;
             }
         }
@@ -219,28 +244,26 @@ public class World {
             swapCells(x, y, x, y + 1);
             return;
         }
-        
-        // Spread horizontally
-        if (random.nextInt(100) < 35) {
-            int[] directions = {-1, 1};
-            shuffle(directions);
-            for (int dir : directions) {
-                int targetX = x + dir;
-                if (inBounds(targetX, y)) {
-                    Material target = grid[y][targetX].getMaterial();
-                    if (target == Material.WATER) {
-                        grid[y][targetX] = new Cell(Material.STEAM);
-                        grid[y][x] = new Cell(Material.STONE);
-                        return;
-                    } else if (target == Material.EMPTY || target == Material.SAND) {
-                        swapCells(x, y, targetX, y);
-                        return;
-                    }
+
+        int[][] diagonalMoves = {{-1, 1}, {1, 1}, {-1, 0}, {1, 0}, {0, 1}};
+        shuffleDiagonalMoves(diagonalMoves);
+        for (int[] move : diagonalMoves) {
+            int nx = x + move[0];
+            int ny = y + move[1];
+            if (inBounds(nx, ny)) {
+                Material target = grid[ny][nx].getMaterial();
+                if (target == Material.WATER) {
+                    grid[ny][nx] = new Cell(Material.STEAM);
+                    grid[y][x] = new Cell(Material.STONE);
+                    return;
+                }
+                if (target == Material.EMPTY || target == Material.SAND) {
+                    swapCells(x, y, nx, ny);
+                    return;
                 }
             }
         }
-        
-        // Cool at edges - extremely slowly
+
         if (random.nextInt(1000) < 1) {
             grid[y][x] = new Cell(Material.STONE);
         }
@@ -365,6 +388,26 @@ public class World {
             values[i] = values[j];
             values[j] = temp;
         }
+    }
+
+    private void shuffleDiagonalMoves(int[][] moves) {
+        for (int i = moves.length - 1; i > 0; i--) {
+            int j = random.nextInt(i + 1);
+            int[] temp = moves[i];
+            moves[i] = moves[j];
+            moves[j] = temp;
+        }
+    }
+
+    private int[][] neighborOffsets() {
+        return new int[][] {
+            {1, 0}, {-1, 0}, {0, 1}, {0, -1},
+            {1, 1}, {1, -1}, {-1, 1}, {-1, -1}
+        };
+    }
+
+    private String key(int x, int y) {
+        return x + "," + y;
     }
 
     private boolean inBounds(int x, int y) {
