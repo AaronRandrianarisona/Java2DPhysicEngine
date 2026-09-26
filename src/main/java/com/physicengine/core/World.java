@@ -48,12 +48,13 @@ public class World {
     }
 
     public void tick() {
+        applyEmergentReactions();
         for (int y = height - 2; y >= 0; y--) {
             for (int x = 0; x < width; x++) {
                 processCell(x, y);
             }
         }
-        applyEmergentReactions();
+        //applyEmergentReactions();
     }
 
     private void processCell(int x, int y) {
@@ -207,7 +208,7 @@ public class World {
     }
 
     private void moveWater(int x, int y) {
-        if (canMove(x, y + 1)) {
+        if (canMove(x, y + 1)) { 
             swapCells(x, y, x, y + 1);
             return;
         }

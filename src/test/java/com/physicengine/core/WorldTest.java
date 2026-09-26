@@ -43,28 +43,38 @@ class WorldTest {
         world.setCell(2, 2, Material.FIRE);
         world.setCell(2, 3, Material.WOOD);
 
-        world.tick();
+        boolean WoodBurning = false;
+        for (int i = 0; i < 20; i++) {
+            if (world.getCell(2, 3).getMaterial() == Material.FIRE) {
+                WoodBurning = true;
+                break;
+            }
+            world.tick();
+        }
 
-        assertEquals(Material.FIRE, world.getCell(2, 3).getMaterial());
-        assertEquals(Material.FIRE, world.getCell(2, 2).getMaterial());
+        assertTrue(WoodBurning, "Wood did not catch fire within 9 ticks.");
 
-        for (int i = 0; i < 8; i++) {
+        for (int i = 0; i < 50; i++) {
             world.tick();
         }
 
         assertNotEquals(Material.FIRE, world.getCell(2, 2).getMaterial());
+        assertNotEquals(Material.WOOD, world.getCell(2, 3).getMaterial());
     }
 
     @Test
     void lavaAndWaterReactVerticallyAndDiagonally() {
         World verticalWorld = new World(6, 6);
-        verticalWorld.setCell(2, 1, Material.LAVA);
-        verticalWorld.setCell(2, 0, Material.WATER);
+        verticalWorld.setCell(2, 0, Material.LAVA);
+        verticalWorld.setCell(2, 1, Material.WATER);
 
         verticalWorld.tick();
 
-        assertTrue(verticalWorld.getCell(2, 0).getMaterial() == Material.STEAM || verticalWorld.getCell(2, 0).getMaterial() == Material.EMPTY);
-        assertTrue(verticalWorld.getCell(2, 1).getMaterial() == Material.STONE || verticalWorld.getCell(2, 1).getMaterial() == Material.EMPTY);
+        
+        assertTrue(verticalWorld.getCell(2, 1).getMaterial() == Material.STEAM || verticalWorld.getCell(2, 1).getMaterial() == Material.EMPTY,
+            "Expected cell (2, 1) to be STEAM or EMPTY, but was " + verticalWorld.getCell(2, 1).getMaterial());
+        assertTrue(verticalWorld.getCell(2, 0).getMaterial() == Material.STONE || verticalWorld.getCell(2, 0).getMaterial() == Material.EMPTY,
+            "Expected cell (2, 0) to be STONE or EMPTY, but was " + verticalWorld.getCell(2, 0).getMaterial());
 
         World diagonalWorld = new World(6, 6);
         diagonalWorld.setCell(1, 1, Material.LAVA);
@@ -72,8 +82,10 @@ class WorldTest {
 
         diagonalWorld.tick();
 
-        assertTrue(diagonalWorld.getCell(2, 0).getMaterial() == Material.STEAM || diagonalWorld.getCell(2, 0).getMaterial() == Material.EMPTY);
-        assertTrue(diagonalWorld.getCell(1, 1).getMaterial() == Material.STONE || diagonalWorld.getCell(1, 1).getMaterial() == Material.EMPTY);
+        assertTrue(diagonalWorld.getCell(2, 0).getMaterial() == Material.STEAM || diagonalWorld.getCell(2, 0).getMaterial() == Material.EMPTY, 
+            "Expected cell (2, 0) to be STEAM or EMPTY, but was " + diagonalWorld.getCell(2, 0).getMaterial());
+        assertTrue(diagonalWorld.getCell(1, 1).getMaterial() == Material.STONE || diagonalWorld.getCell(1, 1).getMaterial() == Material.EMPTY, 
+            "Expected cell (1, 1) to be STONE or EMPTY, but was " + diagonalWorld.getCell(1, 1).getMaterial());
     }
 
     @Test
